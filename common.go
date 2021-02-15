@@ -23,6 +23,15 @@ func contains(s string, ss []string) bool {
 	return false
 }
 
+func bound(val int, low int , high int) int {
+	if val < low {
+		val = low
+	} else if val > high {
+		val = high
+	}
+	return val
+}
+
 // Forward data between @conn and @stream util one of them
 // calls close() or error out.
 func conn2stream(conn net.Conn, stream *smux.Stream) {

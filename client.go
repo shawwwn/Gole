@@ -27,39 +27,41 @@ func StartClient(conn net.Conn, conf Config) {
 func StartClientTCP(conn *net.TCPConn, conf *TCPConfig) {
 
 	// Setup client side of smux
+	var interval int = g_timeout/3
+	interval = bound(interval, 1, 10)
 	smuxConfig := smux.DefaultConfig()
 	smuxConfig.Version = 1
 	smuxConfig.MaxReceiveBuffer = 4194304
 	smuxConfig.MaxStreamBuffer = 2097152
-	// smuxConfig.KeepAliveInterval = time.Duration(2) * time.Second
-	// smuxConfig.KeepAliveTimeout = time.Duration(10) * time.Second
+	smuxConfig.KeepAliveInterval = time.Duration(interval) * time.Second
+	smuxConfig.KeepAliveTimeout = time.Duration(g_timeout) * time.Second
 	if err := smux.VerifyConfig(smuxConfig); err != nil {
 		perror("smux.VerifyConfig() failed.", err)
 		os.Exit(1)
 	}
 
-	session, err := smux.Client(conn, smuxConfig)
+	sess, err := smux.Client(conn, smuxConfig)
 	if err != nil {
 		perror("smux.Client() failed.", err)
 		os.Exit(1)
 	}
-	fmt.Printf("tunnel created: [local]%v <--> [remote]%v\n", session.LocalAddr(), session.RemoteAddr())
+	fmt.Printf("tunnel created: [local]%v <--> [remote]%v\n", sess.LocalAddr(), sess.RemoteAddr())
 
 	// listen for connections from forward address
-	listener, err := net.ListenTCP("tcp", conf.FwdAddr.(*net.TCPAddr))
+	lis, err := net.ListenTCP("tcp", conf.FwdAddr.(*net.TCPAddr))
 	if err != nil {
 		perror("net.Listen() failed.", err)
 		os.Exit(1)
 	}
-	defer listener.Close()
+	defer lis.Close()
 	fmt.Printf("Waiting for new connections from %s ...\n", conf.FwdAddr.String())
 
-	// periodic check if smux.Client is still alive
+	// periodic check if smux session is still alive
 	go func() {
 		for {
 			time.Sleep(2*time.Second)
-			if session.IsClosed() {
-				listener.Close()
+			if sess.IsClosed() {
+				lis.Close()
 				fmt.Printf("tunnel is closed\n")
 				break
 			}
@@ -67,15 +69,15 @@ func StartClientTCP(conn *net.TCPConn, conf *TCPConfig) {
 	}()
 
 	for {
-		fwd_conn, err := listener.Accept()
+		fwd_conn, err := lis.Accept()
 		if err != nil {
-			perror("listener.Accept() failed.", err)
+			perror("lis.Accept() failed.", err)
 			break
 		}
 
-		stream, err := session.OpenStream()
+		stream, err := sess.OpenStream()
 		if err != nil {
-			perror("session.OpenStream() failed.", err)
+			perror("sess.OpenStream() failed.", err)
 			fwd_conn.Close()
 			break
 		}
@@ -86,8 +88,8 @@ func StartClientTCP(conn *net.TCPConn, conf *TCPConfig) {
 
 	// clean up
 	fmt.Printf("...\n")
-	fmt.Printf("tunnel collapsed: [local]%v <--> [remote]%v\n", session.LocalAddr(), session.RemoteAddr())
-	session.Close()
+	fmt.Printf("tunnel collapsed: [local]%v <--> [remote]%v\n", sess.LocalAddr(), sess.RemoteAddr())
+	sess.Close()
 	conn.Close()
 	time.Sleep(time.Second)
 	fmt.Printf("Done\n")
@@ -122,12 +124,14 @@ func StartClientKCP(conn *net.UDPConn, conf *UDPConfig) {
 	}
 
 	// Setup client side of smux
+	var interval int = g_timeout/3
+	interval = bound(interval, 1, 10)
 	smuxConfig := smux.DefaultConfig()
 	smuxConfig.Version = 1
 	smuxConfig.MaxReceiveBuffer = 4194304
 	smuxConfig.MaxStreamBuffer = 2097152
-	// smuxConfig.KeepAliveInterval = time.Duration(2) * time.Second
-	// smuxConfig.KeepAliveTimeout = time.Duration(10) * time.Second
+	smuxConfig.KeepAliveInterval = time.Duration(interval) * time.Second
+	smuxConfig.KeepAliveTimeout = time.Duration(g_timeout) * time.Second
 	if err := smux.VerifyConfig(smuxConfig); err != nil {
 		perror("smux.VerifyConfig() failed.", err)
 		os.Exit(1)
@@ -148,6 +152,18 @@ func StartClientKCP(conn *net.UDPConn, conf *UDPConfig) {
 	}
 	defer lis.Close()
 	fmt.Printf("Waiting for new connections from %s ...\n", conf.FwdAddr.String())
+
+	// periodic check if smux session is still alive
+	go func() {
+		for {
+			time.Sleep(2*time.Second)
+			if sess.IsClosed() {
+				lis.Close()
+				fmt.Printf("tunnel is closed\n")
+				break
+			}
+		}
+	}()
 
 	for {
 		fwd_conn, err := lis.Accept()

@@ -64,7 +64,7 @@ func ParseConfig(args []string) Config {
 	g_cmd.BoolVar(&g_verbose, "v", false, "")
 	g_help := g_cmd.Bool("help", false, "usage information")
 	g_cmd.BoolVar(g_help, "h", false, "")
-	g_cmd.IntVar(&g_timeout, "timeout", 10, "how long in seconds an idle connection timeout and exit")
+	g_cmd.IntVar(&g_timeout, "timeout", 30, "how long in seconds an idle connection timeout and exit")
 
 	tcp_cmd := flag.NewFlagSet("tcp", flag.ExitOnError)
 	tcp_op := tcp_cmd.String("op", "holepunch", "operation to perform")

@@ -27,12 +27,14 @@ func StartServer(conn net.Conn, conf Config) {
 func StartServerTCP(conn *net.TCPConn, conf *TCPConfig) {
 
 	// Setup server side of smux
+	var interval int = g_timeout/3
+	interval = bound(interval, 1, 10)
 	smuxConfig := smux.DefaultConfig()
 	smuxConfig.Version = 1
 	smuxConfig.MaxReceiveBuffer = 4194304
 	smuxConfig.MaxStreamBuffer = 2097152
-	// smuxConfig.KeepAliveInterval = time.Duration(2) * time.Second
-	// smuxConfig.KeepAliveTimeout = time.Duration(10) * time.Second
+	smuxConfig.KeepAliveInterval = time.Duration(interval) * time.Second
+	smuxConfig.KeepAliveTimeout = time.Duration(g_timeout) * time.Second
 	if err := smux.VerifyConfig(smuxConfig); err != nil {
 		perror("smux.VerifyConfig() failed.", err)
 		os.Exit(1)
@@ -110,12 +112,14 @@ func StartServerKCP(conn *net.UDPConn, conf *UDPConfig) {
 	kconn.SetACKNoDelay(kconf.AckNodelay)
 
 	// Setup server side of smux
+	var interval int = g_timeout/3
+	interval = bound(interval, 1, 10)
 	smuxConfig := smux.DefaultConfig()
 	smuxConfig.Version = 1
 	smuxConfig.MaxReceiveBuffer = 4194304
 	smuxConfig.MaxStreamBuffer = 2097152
-	// smuxConfig.KeepAliveInterval = time.Duration(2) * time.Second
-	// smuxConfig.KeepAliveTimeout = time.Duration(10) * time.Second
+	smuxConfig.KeepAliveInterval = time.Duration(interval) * time.Second
+	smuxConfig.KeepAliveTimeout = time.Duration(g_timeout) * time.Second
 	if err := smux.VerifyConfig(smuxConfig); err != nil {
 		perror("smux.VerifyConfig() failed.", err)
 		os.Exit(1)
