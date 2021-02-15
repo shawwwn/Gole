@@ -59,17 +59,17 @@ func (c UDPConfig) getOp() string {
 func ParseConfig(args []string) Config {
 	tcp_cmd := flag.NewFlagSet("tcp", flag.ExitOnError)
 	tcp_op := tcp_cmd.String("op", "holepunch", "operation to perform")
-	tcp_fwd := tcp_cmd.String("fwd", "", "forward to/from address in server/client mode)")
+	tcp_fwd := tcp_cmd.String("fwd", "", "forward to/from address in server/client mode")
 
 	udp_cmd := flag.NewFlagSet("udp", flag.ExitOnError)
-	udp_ttl := udp_cmd.Int("ttl", 0, "ttl value used during holepunching")
+	udp_ttl := udp_cmd.Int("ttl", 0, "ttl value used in holepunching")
 	udp_op := udp_cmd.String("op", "holepunch", "operation to perform")
 	udp_proto := udp_cmd.String("proto", "udp", "tunnel's transport layer protocol")
-	udp_fwd := udp_cmd.String("fwd", "", "forward to/from address in server/client mode)")
+	udp_fwd := udp_cmd.String("fwd", "", "forward to/from address in server/client mode")
 
 	print_usage := func() {
 		fmt.Println("usage:")
-		fmt.Println("gtun MODE(tcp|udp) local_addr remote_addr [OPTIONS]")
+		fmt.Println("gole MODE local_addr remote_addr MODE_OPTIONS...")
 		fmt.Println("\nMODE 'tcp' OPTIONS:")
 		tcp_cmd.PrintDefaults()
 		fmt.Println("\nMODE 'udp' OPTIONS:")
