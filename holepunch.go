@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"sync"
 	"context"
+	"errors"
 
 	"golang.org/x/net/ipv4"
 )
@@ -30,8 +31,10 @@ func Punch(conf Config) (net.Conn, error) {
 func PunchTCP(laddr, raddr *net.TCPAddr) (*net.TCPConn, error) {
 	var conn *net.TCPConn
 	var err error
+	var thru bool = false
 
-	for {
+	// ~2mins timeout
+	for i:=0; i<60; i++ {
 		conn, err = net.DialTCP("tcp", laddr, raddr)
 		if (err != nil) {
 			ms := 1000+rand.Intn(2000)
@@ -40,7 +43,7 @@ func PunchTCP(laddr, raddr *net.TCPAddr) (*net.TCPConn, error) {
 			continue
 		}
 
-		msg := fmt.Sprintf("Hello, I'm %d", os.Getpid())
+		msg := fmt.Sprintf("HELO-%d", os.Getpid())
 		fmt.Printf("send: %s\n", msg);
 		_, err = conn.Write([]byte(msg))
 		if (err != nil) {
@@ -56,10 +59,13 @@ func PunchTCP(laddr, raddr *net.TCPAddr) (*net.TCPConn, error) {
 		}
 		fmt.Printf("recv: %s\n", data[:n])
 
+		thru = true
 		break
 	}
 
-	err = nil
+	if !thru {
+		return nil, errors.New("timeout punching holes")
+	}
 	return conn, err
 }
 
@@ -121,7 +127,8 @@ func PunchUDP(laddr, raddr *net.UDPAddr, ttl ...int) (*net.UDPConn, error) {
 		defer fmt.Println("sender stopped")
 		defer wg.Done()
 
-		for i:=1; i<=50; i++ {
+		// ~2mins timeout
+		for i:=1; i<=60; i++ {
 			err = sendMsgUDP(conn, msg, raddr)
 			ms := time.Duration(1000+rand.Intn(2000))
 			select {
@@ -129,7 +136,7 @@ func PunchUDP(laddr, raddr *net.UDPAddr, ttl ...int) (*net.UDPConn, error) {
 			case <-ctx1.Done():
 				return
 			}
-			if i == 50 {
+			if i == 60 {
 				fmt.Println("send: failed.")
 				fail = true
 				close(recv_done)
@@ -200,16 +207,14 @@ func PunchUDP(laddr, raddr *net.UDPAddr, ttl ...int) (*net.UDPConn, error) {
 	}()
 
 	wg.Wait()
-	if fail {
-		println("failed")
-		os.Exit(1)
-	}
 	close(recv_done) // stop receiver
 	conn.SetReadDeadline(time.Now()) // cancel ReadFromUDP()
 	time.Sleep(10)
 	fmt.Println("Wait for remaining packets to clear ...")
-	time.Sleep(4*time.Second) // wait for packets to clear
-
+	time.Sleep(2*time.Second) // wait for packets to clear
+	if fail {
+		return nil, errors.New("timeout punching holes")
+	}
 	return conn, nil
 }
 
