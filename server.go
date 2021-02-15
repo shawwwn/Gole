@@ -114,8 +114,8 @@ func StartServerKCP(conn *net.UDPConn, conf *UDPConfig) {
 	smuxConfig.Version = 1
 	smuxConfig.MaxReceiveBuffer = 4194304
 	smuxConfig.MaxStreamBuffer = 2097152
-	smuxConfig.KeepAliveInterval = time.Duration(2) * time.Second
-	smuxConfig.KeepAliveTimeout = time.Duration(10) * time.Second
+	// smuxConfig.KeepAliveInterval = time.Duration(2) * time.Second
+	// smuxConfig.KeepAliveTimeout = time.Duration(10) * time.Second
 	if err := smux.VerifyConfig(smuxConfig); err != nil {
 		perror("smux.VerifyConfig() failed.", err)
 		os.Exit(1)
@@ -170,7 +170,7 @@ func StartServerUDP(conn *net.UDPConn, conf *UDPConfig) {
 	conn.Close()
 	conn, err = net.DialUDP("udp", conf.LAddr, conf.RAddr)
 
-	// TODO: Needs udp mux.
+	// TODO: Needs udp muxing.
 
 	// conn --> fwd_conn
 	go func() {
@@ -178,7 +178,7 @@ func StartServerUDP(conn *net.UDPConn, conf *UDPConfig) {
 		defer fwd_conn.Close()
 		buf := make([]byte, 4096)
 		for {
-			conn.SetDeadline(time.Now().Add(time.Duration(10) * time.Second))
+			conn.SetDeadline(time.Now().Add(time.Duration(g_timeout) * time.Second))
 			n, err := conn.Read(buf)
 			if err != nil {
 				fmt.Println("conn.Read() failed.", err)
@@ -209,7 +209,7 @@ func StartServerUDP(conn *net.UDPConn, conf *UDPConfig) {
 				fmt.Println("conn.Write() failed.", err)
 				return
 			}
-			conn.SetDeadline(time.Now().Add(time.Duration(10) * time.Second))
+			conn.SetDeadline(time.Now().Add(time.Duration(g_timeout) * time.Second))
 		}
 	}()
 

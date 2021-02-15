@@ -126,8 +126,8 @@ func StartClientKCP(conn *net.UDPConn, conf *UDPConfig) {
 	smuxConfig.Version = 1
 	smuxConfig.MaxReceiveBuffer = 4194304
 	smuxConfig.MaxStreamBuffer = 2097152
-	smuxConfig.KeepAliveInterval = time.Duration(2) * time.Second
-	smuxConfig.KeepAliveTimeout = time.Duration(10) * time.Second
+	// smuxConfig.KeepAliveInterval = time.Duration(2) * time.Second
+	// smuxConfig.KeepAliveTimeout = time.Duration(10) * time.Second
 	if err := smux.VerifyConfig(smuxConfig); err != nil {
 		perror("smux.VerifyConfig() failed.", err)
 		os.Exit(1)
@@ -202,7 +202,7 @@ func StartClientUDP(conn *net.UDPConn, conf *UDPConfig) {
 		defer fwd_conn.Close()
 		buf := make([]byte, 4096)
 		for {
-			conn.SetDeadline(time.Now().Add(time.Duration(10) * time.Second))
+			conn.SetDeadline(time.Now().Add(time.Duration(g_timeout) * time.Second))
 			n, _, err := conn.ReadFromUDP(buf)
 			if err != nil {
 				fmt.Println("conn.ReadFromUDP() failed.", err)
@@ -244,7 +244,7 @@ func StartClientUDP(conn *net.UDPConn, conf *UDPConfig) {
 				fmt.Println("conn.Write() failed.", err)
 				return
 			}
-			conn.SetDeadline(time.Now().Add(time.Duration(10) * time.Second))
+			conn.SetDeadline(time.Now().Add(time.Duration(g_timeout) * time.Second))
 		}
 	}()
 
