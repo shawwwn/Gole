@@ -10,6 +10,7 @@ $(OUT): $(SOURCES)
 	go build $(LDFLAGS) -o $(OUT) $(SOURCES)
 
 clean:
+	-rm $(OUT)
 	-rm ./client ./server
 	-rm ./gtun
 	-rm *.exe
