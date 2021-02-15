@@ -122,6 +122,7 @@ func StartClientKCP(conn *net.UDPConn, conf *UDPConfig) {
 	if err := kconn.SetWriteBuffer(kconf.SockBuf); err != nil {
 		perror("kconn.SetWriteBuffer() failed.", err)
 	}
+	kconn.Write([]byte("ping")) // let remote know we are connected
 
 	// Setup client side of smux
 	var interval int = g_timeout/3

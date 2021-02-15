@@ -98,6 +98,7 @@ func StartServerKCP(conn *net.UDPConn, conf *UDPConfig) {
 		perror("klis.SetWriteBuffer() failed.", err)
 	}
 
+	klis.SetDeadline(time.Now().Add(time.Duration(g_timeout) * time.Second))
 	kconn, err := klis.AcceptKCP()
 	if err != nil {
 		perror("klis.AcceptKCP() failed.", err)
