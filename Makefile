@@ -1,0 +1,15 @@
+LDFLAGS := -ldflags="-s -w"
+SOURCES := main.go common.go cli.go kconfig.go holepunch.go server.go client.go
+OUT := gole
+ifneq (,$(findstring NT,$(shell uname)))
+	OUT := $(OUT).exe
+endif
+
+default: $(OUT)
+$(OUT): $(SOURCES)
+	go build $(LDFLAGS) -o $(OUT) $(SOURCES)
+
+clean:
+	-rm ./client ./server
+	-rm ./gtun
+	-rm *.exe
