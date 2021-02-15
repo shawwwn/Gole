@@ -36,7 +36,7 @@ I can then access Peer's web server from my `127.0.0.1:1111`:
 
 ## Usage
 ```
-gtun MODE local_addr remote_addr MODE_OPTIONS...
+gole MODE local_addr remote_addr MODE_OPTIONS...
 
     MODE 'tcp' OPTIONS:
       -fwd=IP:PORT
