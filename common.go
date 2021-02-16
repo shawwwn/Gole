@@ -32,6 +32,13 @@ func bound(val int, low int , high int) int {
 	return val
 }
 
+func PrintDbgf(format string, a ...interface{}) (n int, err error) {
+	if g_verbose {
+		return fmt.Printf(format, a...)
+	}
+	return 0, nil
+}
+
 // Forward data between @conn and @stream util one of them
 // calls close() or error out.
 func conn2stream(conn net.Conn, stream *smux.Stream) {
@@ -52,7 +59,7 @@ func conn2stream(conn net.Conn, stream *smux.Stream) {
 	go copyIO(stream, conn, n_send)
 	go copyIO(conn, stream, n_recv)
 
-	fmt.Printf("stream close(%d): send:%d, recv:%d\n", stream.ID(), <- n_send, <- n_recv)
+	PrintDbgf("stream close(%d): send:%d, recv:%d\n", stream.ID(), <- n_send, <- n_recv)
 }
 
 // Forward data between @conn and @stream util one of them
@@ -75,7 +82,7 @@ func stream2conn(stream *smux.Stream, conn net.Conn) {
 	go copyIO(stream, conn, n_send)
 	go copyIO(conn, stream, n_recv)
 
-	fmt.Printf("stream close(%d): send:%d, recv:%d\n", stream.ID(), <- n_send, <- n_recv)
+	PrintDbgf("stream close(%d): send:%d, recv:%d\n", stream.ID(), <- n_send, <- n_recv)
 }
 
 func conn2conn(fwd_conn net.Conn, conn net.Conn) {

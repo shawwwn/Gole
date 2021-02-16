@@ -81,7 +81,7 @@ func StartClientTCP(conn *net.TCPConn, conf *TCPConfig) {
 			fwd_conn.Close()
 			break
 		}
-		fmt.Printf("stream open(%d): %v --> tunnel\n", stream.ID(), fwd_conn.RemoteAddr())
+		PrintDbgf("stream open(%d): %v --> tunnel\n", stream.ID(), fwd_conn.RemoteAddr())
 
 		go conn2stream(fwd_conn, stream)
 	}
@@ -92,21 +92,19 @@ func StartClientTCP(conn *net.TCPConn, conf *TCPConfig) {
 	sess.Close()
 	conn.Close()
 	time.Sleep(time.Second)
-	fmt.Printf("Done\n")
 }
 
 func StartClientKCP(conn *net.UDPConn, conf *UDPConfig) {
 
 	// setup kcp
 	kconf := getKCPConfig(conf.KConf)
-	fmt.Printf("%T: %v\n", kconf, kconf)
+	PrintDbgf("%T: %v\n", kconf, kconf)
 	block := getKCPBlockCipher(kconf)
 	kconn, err := kcp.NewConn2(conf.RAddr, block, kconf.DataShard, kconf.ParityShard, conn)
 	if err != nil {
 		perror("kcp.NewConn2() failed.", err)
 		os.Exit(1)
 	}
-	fmt.Println("kcp remote address:", kconn.RemoteAddr())
 	kconn.SetStreamMode(true)
 	kconn.SetWriteDelay(false)
 	kconn.SetNoDelay(kconf.NoDelay, kconf.Interval, kconf.Resend, kconf.NoCongestion)
@@ -122,7 +120,7 @@ func StartClientKCP(conn *net.UDPConn, conf *UDPConfig) {
 	if err := kconn.SetWriteBuffer(kconf.SockBuf); err != nil {
 		perror("kconn.SetWriteBuffer() failed.", err)
 	}
-	kconn.Write([]byte("ping")) // let remote know we are connected
+	kconn.Write([]byte{1,3,0,0,0,0,0,0}) // smux cmdNOP, let remote know we are connected
 
 	// Setup client side of smux
 	var interval int = g_timeout/3
@@ -179,7 +177,7 @@ func StartClientKCP(conn *net.UDPConn, conf *UDPConfig) {
 			fwd_conn.Close()
 			break
 		}
-		fmt.Printf("stream open(%d): %v --> tunnel\n", stream.ID(), fwd_conn.RemoteAddr())
+		PrintDbgf("stream open(%d): %v --> tunnel\n", stream.ID(), fwd_conn.RemoteAddr())
 
 		go conn2stream(fwd_conn, stream)
 	} // AcceptTCP()
@@ -191,7 +189,6 @@ func StartClientKCP(conn *net.UDPConn, conf *UDPConfig) {
 	kconn.Close()
 	conn.Close()
 	time.Sleep(time.Second)
-	fmt.Printf("Done\n")
 }
 
 func StartClientUDP(conn *net.UDPConn, conf *UDPConfig) {
@@ -211,7 +208,7 @@ func StartClientUDP(conn *net.UDPConn, conf *UDPConfig) {
 
 	// TODO: Below code for udp forwarding is just a prototype and should never 
 	//       be used in a production system as it only allows one connection.
-	//       Needs udp mux.
+	//       Needs udp muxing.
 
 	// conn --> fwd_conn
 	go func() {
@@ -249,11 +246,11 @@ func StartClientUDP(conn *net.UDPConn, conf *UDPConfig) {
 			// use the most recent client address
 			if client_addr==nil  {
 				client_addr = c_addr
-				fmt.Printf("connection from: %s\n", client_addr)
+				PrintDbgf("connection from: %s\n", client_addr)
 				close(sent)
 			} else if !UDPAddrEqual(c_addr, client_addr) {
 				client_addr = c_addr
-				fmt.Printf("new connection from: %s\n", client_addr)
+				PrintDbgf("new connection from: %s\n", client_addr)
 			}
 
 			_, err = conn.Write(buf[:n])
@@ -268,5 +265,4 @@ func StartClientUDP(conn *net.UDPConn, conf *UDPConfig) {
 	fmt.Println("...")
 	fmt.Printf("tunnel collapsed: [local]%v <--> [remote]%v\n", conf.LocalAddr(), conf.RemoteAddr())
 	time.Sleep(time.Second)
-	fmt.Printf("Done\n")
 }

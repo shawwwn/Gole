@@ -63,7 +63,7 @@ func StartServerTCP(conn *net.TCPConn, conf *TCPConfig) {
 			stream.Close()
 			continue
 		}
-		fmt.Printf("stream open(%d): tunnel --> %v\n", stream.ID(), fwd_conn.RemoteAddr())
+		PrintDbgf("stream open(%d): tunnel --> %v\n", stream.ID(), fwd_conn.RemoteAddr())
 
 		go stream2conn(stream, fwd_conn)
 	}
@@ -74,14 +74,13 @@ func StartServerTCP(conn *net.TCPConn, conf *TCPConfig) {
 	session.Close()
 	conn.Close()
 	time.Sleep(time.Second)
-	fmt.Printf("Done\n")
 }
 
 func StartServerKCP(conn *net.UDPConn, conf *UDPConfig) {
 
 	// setup kcp
 	kconf := getKCPConfig(conf.KConf)
-	fmt.Printf("%T: %v\n", kconf, kconf)
+	PrintDbgf("%T: %v\n", kconf, kconf)
 	block := getKCPBlockCipher(kconf)
 	klis, err := kcp.ServeConn(block, kconf.DataShard, kconf.ParityShard, conn)
 	if err != nil {
@@ -98,13 +97,12 @@ func StartServerKCP(conn *net.UDPConn, conf *UDPConfig) {
 		perror("klis.SetWriteBuffer() failed.", err)
 	}
 
-	klis.SetDeadline(time.Now().Add(time.Duration(g_timeout) * time.Second))
+	klis.SetDeadline(time.Now().Add(time.Duration(g_timeout+4) * time.Second))
 	kconn, err := klis.AcceptKCP()
 	if err != nil {
 		perror("klis.AcceptKCP() failed.", err)
 		os.Exit(1)
 	}
-	fmt.Println("kcp remote address:", kconn.RemoteAddr())
 	kconn.SetStreamMode(true)
 	kconn.SetWriteDelay(false)
 	kconn.SetNoDelay(kconf.NoDelay, kconf.Interval, kconf.Resend, kconf.NoCongestion)
@@ -148,7 +146,7 @@ func StartServerKCP(conn *net.UDPConn, conf *UDPConfig) {
 			stream.Close()
 			continue
 		}
-		fmt.Printf("stream open(%d): tunnel --> %v\n", stream.ID(), fwd_conn.RemoteAddr())
+		PrintDbgf("stream open(%d): tunnel --> %v\n", stream.ID(), fwd_conn.RemoteAddr())
 
 		go stream2conn(stream, fwd_conn)
 	} // AcceptStream()
@@ -160,7 +158,6 @@ func StartServerKCP(conn *net.UDPConn, conf *UDPConfig) {
 	kconn.Close()
 	conn.Close()
 	time.Sleep(time.Second)
-	fmt.Printf("Done\n")
 }
 
 func StartServerUDP(conn *net.UDPConn, conf *UDPConfig) {
@@ -221,5 +218,4 @@ func StartServerUDP(conn *net.UDPConn, conf *UDPConfig) {
 	fmt.Println("...")
 	fmt.Printf("tunnel collapsed: [local]%v <--> [remote]%v\n", conf.LocalAddr(), conf.RemoteAddr())
 	time.Sleep(time.Second)
-	fmt.Printf("Done\n")
 }

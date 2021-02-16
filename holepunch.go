@@ -44,7 +44,7 @@ func PunchTCP(laddr, raddr *net.TCPAddr) (*net.TCPConn, error) {
 		}
 
 		msg := fmt.Sprintf("HELO-%d", os.Getpid())
-		fmt.Printf("send: %s\n", msg);
+		PrintDbgf("send: %s\n", msg);
 		_, err = conn.Write([]byte(msg))
 		if (err != nil) {
 			perror("send() failed.", err)
@@ -77,7 +77,7 @@ type sudp struct {
 }
 
 func sendMsgUDP(conn *net.UDPConn, msg string, to_addr *net.UDPAddr) error {
-	fmt.Printf("send: %s\n", msg);
+	PrintDbgf("send: %s\n", msg);
 	_, err := conn.WriteToUDP([]byte(msg), to_addr)
 	if (err != nil) {
 		perror("send() failed.", err)
@@ -124,7 +124,7 @@ func PunchUDP(laddr, raddr *net.UDPAddr, ttl ...int) (*net.UDPConn, error) {
 	msg := fmt.Sprintf("HELO-%d", os.Getpid())
 	wg.Add(1)
 	go func() {
-		defer fmt.Println("sender stopped")
+		defer PrintDbgf("sender stopped\n")
 		defer wg.Done()
 
 		// ~2mins timeout
@@ -137,13 +137,13 @@ func PunchUDP(laddr, raddr *net.UDPAddr, ttl ...int) (*net.UDPConn, error) {
 				return
 			}
 			if i == 60 {
-				fmt.Println("send: failed.")
+				PrintDbgf("send: failed.\n")
 				fail = true
 				close(recv_done)
 				conn.SetReadDeadline(time.Now())
 				return
 			} else {
-				fmt.Println("send: timeout, retry")
+				PrintDbgf("send: timeout, retry\n")
 			}
 		}
 	}()
@@ -153,7 +153,7 @@ func PunchUDP(laddr, raddr *net.UDPAddr, ttl ...int) (*net.UDPConn, error) {
 	go func() {
 		helo, okay := false, false
 		defer func() {
-			fmt.Println("receiver stopped")
+			PrintDbgf("receiver stopped\n")
 			if ! helo { wg.Done() }
 			if ! okay { wg.Done() }
 			conn.SetReadDeadline(time.Time{})
@@ -210,7 +210,7 @@ func PunchUDP(laddr, raddr *net.UDPAddr, ttl ...int) (*net.UDPConn, error) {
 	close(recv_done) // stop receiver
 	conn.SetReadDeadline(time.Now()) // cancel ReadFromUDP()
 	time.Sleep(10)
-	fmt.Println("Wait for remaining packets to clear ...")
+	PrintDbgf("Wait for remaining packets to clear ...\n")
 	time.Sleep(2*time.Second) // wait for packets to clear
 	if fail {
 		return nil, errors.New("timeout punching holes")

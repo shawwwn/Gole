@@ -15,12 +15,12 @@ func main() {
 	case "tcp":
 		fmt.Printf("tunnel mode: TCP\n")
 		fmt.Printf("operation: %s\n", conf.getOp())
-		fmt.Printf("%v\n", conf.(*TCPConfig))
+		PrintDbgf("%v\n", conf.(*TCPConfig))
 	case "udp":
 		fmt.Printf("tunnel mode: UDP\n")
 		fmt.Printf("tunnel protocol: %s\n", conf.(*UDPConfig).Proto)
 		fmt.Printf("operation: %s\n", conf.getOp())
-		fmt.Printf("%v\n", conf.(*UDPConfig))
+		PrintDbgf("%v\n", conf.(*UDPConfig))
 	default:
 		fmt.Printf("not implemented\n")
 		os.Exit(1)
@@ -52,4 +52,5 @@ func main() {
 		fmt.Println("starting server ...")
 		StartServer(conn, conf)
 	}
+	fmt.Printf("Done\n")
 }
