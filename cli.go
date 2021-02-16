@@ -60,7 +60,7 @@ var g_timeout int
 var g_verbose bool
 func ParseConfig(args []string) Config {
 	g_cmd := flag.NewFlagSet("tcp", flag.ExitOnError)
-	g_cmd.BoolVar(&g_verbose, "verbose", false, "print more information")
+	g_cmd.BoolVar(&g_verbose, "verbose", false, "turn on debug output")
 	g_cmd.BoolVar(&g_verbose, "v", false, "")
 	g_help := g_cmd.Bool("help", false, "usage information")
 	g_cmd.BoolVar(g_help, "h", false, "")
@@ -78,7 +78,7 @@ func ParseConfig(args []string) Config {
 
 	print_usage := func() {
 		fmt.Println("usage:")
-		fmt.Println("gole [GLOBAL_OPTIONS] MODE local_addr remote_addr MODE_OPTIONS...")
+		fmt.Println("gole [GLOBAL_OPTIONS] MODE local_addr remote_addr MODE_OPTIONS")
 		fmt.Println("\nGLOBAL OPTIONS:")
 		g_cmd.PrintDefaults()
 		fmt.Println("\nMODE 'tcp' OPTIONS:")
