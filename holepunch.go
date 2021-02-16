@@ -19,28 +19,31 @@ func Punch(conf Config) (net.Conn, error) {
 	var err error
 	switch conf.getMode() {
 	case "tcp":
-		c := conf.(*TCPConfig)
-		conn, err = PunchTCP(c.LAddr, c.RAddr)
+		conn, err = PunchTCP(conf.(*TCPConfig))
 	case "udp":
-		c := conf.(*UDPConfig)
-		conn, err = PunchUDP(c.LAddr, c.RAddr)
+		conn, err = PunchUDP(conf.(*UDPConfig))
 	}
 	return conn, err
 }
 
-func PunchTCP(laddr, raddr *net.TCPAddr) (*net.TCPConn, error) {
-	var conn *net.TCPConn
+func PunchTCP(conf *TCPConfig) (net.Conn, error) {
+	var conn net.Conn
 	var err error
 	var thru bool = false
 
-	// ~2mins timeout
+	// ~2mins timeout on retries
 	for i:=0; i<60; i++ {
-		conn, err = net.DialTCP("tcp", laddr, raddr)
+		conn, err = net.DialTCP("tcp", conf.LAddr, conf.RAddr)
 		if (err != nil) {
 			ms := 1000+rand.Intn(2000)
 			perror(fmt.Sprintf("connect: failed, retry in %.2fs.", float32(ms)/1000), err);
 			time.Sleep(time.Duration(ms)*time.Millisecond);
 			continue
+		}
+
+		// encrypt socket
+		if conf.Key != "" {
+			conn = NewEConn(conn, conf.Enc, conf.Key)
 		}
 
 		msg := fmt.Sprintf("HELO-%d", os.Getpid())
@@ -59,6 +62,12 @@ func PunchTCP(laddr, raddr *net.TCPAddr) (*net.TCPConn, error) {
 		}
 		fmt.Printf("recv: %s\n", data[:n])
 
+		// check authentication
+		if string(data[:4]) != "HELO" {
+			conn.Close()
+			return nil, errors.New("auth failed")
+		}
+
 		thru = true
 		break
 	}
@@ -69,16 +78,9 @@ func PunchTCP(laddr, raddr *net.TCPAddr) (*net.TCPConn, error) {
 	return conn, err
 }
 
-
-
-// simple udp
-type sudp struct {
-	conn net.UDPConn
-}
-
-func sendMsgUDP(conn *net.UDPConn, msg string, to_addr *net.UDPAddr) error {
+func sendMsgUDP(conn net.PacketConn, msg string, to_addr net.Addr) error {
 	PrintDbgf("send: %s\n", msg);
-	_, err := conn.WriteToUDP([]byte(msg), to_addr)
+	_, err := conn.WriteTo([]byte(msg), to_addr)
 	if (err != nil) {
 		perror("send() failed.", err)
 	}
@@ -86,37 +88,44 @@ func sendMsgUDP(conn *net.UDPConn, msg string, to_addr *net.UDPAddr) error {
 	return err
 }
 
-
-func PunchUDP(laddr, raddr *net.UDPAddr, ttl ...int) (*net.UDPConn, error) {
-	var conn *net.UDPConn
+func PunchUDP(conf *UDPConfig) (net.Conn, error) {
+	var conn net.PacketConn
 	var err error
 	var ttl0 int
 	var opts *ipv4.Conn
 
-	// conn, err = net.DialUDP("udp", laddr, raddr)
-	conn, err = net.ListenUDP("udp", laddr)
+	// conn, err = net.DialUDP("udp", conf.LAddr, conf.RAddr)
+	conn, err = net.ListenUDP("udp", conf.LAddr)
 	if err != nil {
 		perror("net.DialUDP() failed.", err)
 		os.Exit(1)
 	}
 
 	var wg sync.WaitGroup
-	var fail bool = false
+	var fail error = nil
 	recv_done := make(chan struct{})
 	ctx1, sendDone := context.WithCancel(context.Background())
 
 	// set ttl
-	if len(ttl) != 0 {
-		opts = ipv4.NewConn(conn)
+	if conf.TTL != 0 {
+		opts = ipv4.NewConn(conn.(*net.UDPConn))
 		ttl0, err = opts.TTL()
 		if err != nil {
 			perror("Get TTL failed.", err)
 		}
-		err = opts.SetTTL(ttl[0])
+		err = opts.SetTTL(conf.TTL)
 		if err != nil {
 			perror("Set TTL failed.", err)
 		} else {
-			fmt.Printf("Set ttl to %d\n", ttl[0])
+			fmt.Printf("Set ttl to %d\n", conf.TTL)
+		}
+	}
+
+	// encrypt socket
+	if conf.Key != "" {
+		switch conn.(type) {
+		case *net.UDPConn:
+			conn = NewEPacketConn(conn, conf.Enc, conf.Key)
 		}
 	}
 
@@ -127,9 +136,9 @@ func PunchUDP(laddr, raddr *net.UDPAddr, ttl ...int) (*net.UDPConn, error) {
 		defer PrintDbgf("sender stopped\n")
 		defer wg.Done()
 
-		// ~2mins timeout
+		// ~2mins timeout on retries
 		for i:=1; i<=60; i++ {
-			err = sendMsgUDP(conn, msg, raddr)
+			err = sendMsgUDP(conn, msg, conf.RAddr)
 			ms := time.Duration(1000+rand.Intn(2000))
 			select {
 			case <-time.After(ms*time.Millisecond):
@@ -138,7 +147,7 @@ func PunchUDP(laddr, raddr *net.UDPAddr, ttl ...int) (*net.UDPConn, error) {
 			}
 			if i == 60 {
 				PrintDbgf("send: failed.\n")
-				fail = true
+				fail = errors.New("timeout punching holes")
 				close(recv_done)
 				conn.SetReadDeadline(time.Now())
 				return
@@ -162,15 +171,19 @@ func PunchUDP(laddr, raddr *net.UDPAddr, ttl ...int) (*net.UDPConn, error) {
 		for {
 			data := make([]byte, 1024)
 			conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-			n, _, err := conn.ReadFromUDP(data)
+			n, raddr, err := conn.ReadFrom(data)
 			select {
 			case <-recv_done:
 				return
 			default:
 			}
+			if raddr.String() != conf.RAddr.String() {
+				fmt.Printf("ignore unsolicited message from %s\n", raddr)
+				continue
+			}
 			if err != nil {
 				perror("recv: failed.", err)
-				fail = true
+				fail = err
 				sendDone()
 				return
 			}
@@ -180,8 +193,15 @@ func PunchUDP(laddr, raddr *net.UDPAddr, ttl ...int) (*net.UDPConn, error) {
 				continue
 			}
 
+			// check authentication
+			if !contains(string(data[:4]), []string{"HELO", "OKAY"}) {
+				fail = errors.New("auth failed")
+				sendDone()
+				return
+			}
+
 			// restore ttl
-			if len(ttl) != 0 {
+			if conf.TTL != 0 {
 				err = opts.SetTTL(ttl0)
 				if err != nil {
 					perror("Restore TTL failed.", err)
@@ -190,12 +210,11 @@ func PunchUDP(laddr, raddr *net.UDPAddr, ttl ...int) (*net.UDPConn, error) {
 
 			switch string(data[:4]) {
 			case "HELO":
-				sendMsgUDP(conn, "OKAY", raddr)
+				sendMsgUDP(conn, "OKAY", conf.RAddr)
 				if ! helo {
 					helo = true
 					wg.Done()
 				}
-				
 			case "OKAY":
 				sendDone()
 				if ! okay {
@@ -208,14 +227,15 @@ func PunchUDP(laddr, raddr *net.UDPAddr, ttl ...int) (*net.UDPConn, error) {
 
 	wg.Wait()
 	close(recv_done) // stop receiver
-	conn.SetReadDeadline(time.Now()) // cancel ReadFromUDP()
+	conn.SetReadDeadline(time.Now()) // cancel ReadFrom()
 	time.Sleep(10)
 	PrintDbgf("Wait for remaining packets to clear ...\n")
 	time.Sleep(2*time.Second) // wait for packets to clear
-	if fail {
-		return nil, errors.New("timeout punching holes")
+	if fail != nil {
+		conn.Close()
+		return nil, fail
 	}
-	return conn, nil
+	return conn.(net.Conn), nil
 }
 
 

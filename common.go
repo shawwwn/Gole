@@ -7,6 +7,7 @@ import (
 	"net"
 	"bytes"
 
+	"golang.org/x/net/ipv4"
 	"github.com/xtaci/smux"
 )
 
@@ -109,4 +110,15 @@ func conn2conn(fwd_conn net.Conn, conn net.Conn) {
 // check if two UDPAddr is equal
 func UDPAddrEqual(a, b *net.UDPAddr) bool {
 	return a.Port==b.Port && bytes.Equal(a.IP, b.IP) && a.Zone==b.Zone
+}
+
+// setDSCP for EConn and EPacketConn
+func SetDSCP(conn net.Conn, dscp int) error {
+	switch nc := conn.(type) {
+	case *EConnXor:
+		return ipv4.NewConn(nc.Conn()).SetTOS(dscp << 2)
+	case *EPacketConnXor:
+		return ipv4.NewConn(nc.Conn()).SetTOS(dscp << 2)
+	}
+	return ipv4.NewConn(conn).SetTOS(dscp << 2)
 }

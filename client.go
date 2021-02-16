@@ -14,17 +14,25 @@ import (
 func StartClient(conn net.Conn, conf Config) {
 	switch conf.getMode() {
 	case "tcp":
-		StartClientTCP(conn.(*net.TCPConn), conf.(*TCPConfig))
+		StartClientTCP(conn, conf.(*TCPConfig))
 	case "udp":
 		if conf.(*UDPConfig).Proto == "kcp" {
-			StartClientKCP(conn.(*net.UDPConn), conf.(*UDPConfig))
+			StartClientKCP(conn.(net.PacketConn), conf.(*UDPConfig))
 		} else {
-			StartClientUDP(conn.(*net.UDPConn), conf.(*UDPConfig))
+			StartClientUDP(conn.(net.PacketConn), conf.(*UDPConfig))
 		}
 	}
 }
 
-func StartClientTCP(conn *net.TCPConn, conf *TCPConfig) {
+func StartClientTCP(conn net.Conn, conf *TCPConfig) {
+
+	// encrypt socket
+	if conf.Key != "" {
+		switch conn.(type) {
+		case *net.TCPConn:
+			conn = NewEConn(conn, conf.Enc, conf.Key)
+		}
+	}
 
 	// Setup client side of smux
 	var interval int = g_timeout/3
@@ -94,7 +102,15 @@ func StartClientTCP(conn *net.TCPConn, conf *TCPConfig) {
 	time.Sleep(time.Second)
 }
 
-func StartClientKCP(conn *net.UDPConn, conf *UDPConfig) {
+func StartClientKCP(conn net.PacketConn, conf *UDPConfig) {
+
+	// encrypt socket
+	if conf.Key != "" {
+		switch conn.(type) {
+		case *net.UDPConn:
+			conn = NewEPacketConn(conn, conf.Enc, conf.Key)
+		}
+	}
 
 	// setup kcp
 	kconf := getKCPConfig(conf.KConf)
@@ -105,14 +121,15 @@ func StartClientKCP(conn *net.UDPConn, conf *UDPConfig) {
 		perror("kcp.NewConn2() failed.", err)
 		os.Exit(1)
 	}
+
 	kconn.SetStreamMode(true)
 	kconn.SetWriteDelay(false)
 	kconn.SetNoDelay(kconf.NoDelay, kconf.Interval, kconf.Resend, kconf.NoCongestion)
 	kconn.SetMtu(kconf.MTU)
 	kconn.SetWindowSize(kconf.SndWnd, kconf.RcvWnd)
 	kconn.SetACKNoDelay(kconf.AckNodelay)
-	if err := kconn.SetDSCP(kconf.DSCP); err != nil {
-		perror("kconn.SetDSCP() failed.", err)
+	if err := SetDSCP(conn.(net.Conn), kconf.DSCP); err != nil {
+		perror("SetDSCP() failed.", err)
 	}
 	if err := kconn.SetReadBuffer(kconf.SockBuf); err != nil {
 		perror("kconn.SetReadBuffer() failed.", err)
@@ -191,17 +208,22 @@ func StartClientKCP(conn *net.UDPConn, conf *UDPConfig) {
 	time.Sleep(time.Second)
 }
 
-func StartClientUDP(conn *net.UDPConn, conf *UDPConfig) {
+func StartClientUDP(conn net.PacketConn, conf *UDPConfig) {
+
+	// encrypt socket
+	if conf.Key != "" {
+		switch conn.(type) {
+		case *net.UDPConn:
+			conn = NewEPacketConn(conn, conf.Enc, conf.Key)
+		}
+	}
+
 	fmt.Printf("Listen on fwd address: %s\n", conf.FwdAddr)
 	fwd_conn, err := net.ListenUDP("udp", conf.FwdAddr.(*net.UDPAddr))
 	if err != nil {
 		perror("net.ListenUDP() failed.", err)
 		os.Exit(1)
 	}
-
-	// recreate socket with sendto() on tunnel endpoints
-	conn.Close()
-	conn, err = net.DialUDP("udp", conf.LAddr, conf.RAddr)
 
 	var client_addr *net.UDPAddr // address originates from client app
 	var sent chan struct{} = make(chan struct{}, 1)
@@ -217,7 +239,7 @@ func StartClientUDP(conn *net.UDPConn, conf *UDPConfig) {
 		buf := make([]byte, 4096)
 		for {
 			conn.SetDeadline(time.Now().Add(time.Duration(g_timeout) * time.Second))
-			n, _, err := conn.ReadFromUDP(buf)
+			n, _, err := conn.ReadFrom(buf)
 			if err != nil {
 				fmt.Println("conn.ReadFromUDP() failed.", err)
 				return
@@ -253,7 +275,7 @@ func StartClientUDP(conn *net.UDPConn, conf *UDPConfig) {
 				PrintDbgf("new connection from: %s\n", client_addr)
 			}
 
-			_, err = conn.Write(buf[:n])
+			_, err = conn.WriteTo(buf[:n], conf.RAddr)
 			if err != nil {
 				fmt.Println("conn.Write() failed.", err)
 				return

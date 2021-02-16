@@ -20,6 +20,8 @@ type TCPConfig struct {
 	LAddr *net.TCPAddr
 	RAddr *net.TCPAddr
 	FwdAddr net.Addr
+	Enc string
+	Key string
 }
 func (c TCPConfig) getMode() string {
 	return "tcp"
@@ -42,6 +44,8 @@ type UDPConfig struct {
 	Proto string
 	KConf string
 	TTL int
+	Enc string
+	Key string
 }
 func (c UDPConfig) getMode() string {
 	return "udp"
@@ -65,6 +69,8 @@ func ParseConfig(args []string) Config {
 	g_help := g_cmd.Bool("help", false, "usage information")
 	g_cmd.BoolVar(g_help, "h", false, "")
 	g_cmd.IntVar(&g_timeout, "timeout", 30, "how long in seconds an idle connection timeout and exit")
+	g_enc := g_cmd.String("enc", "xor", "encryption method")
+	g_key := g_cmd.String("key", "", "encryption key (leave empty to disable encryption)")
 
 	tcp_cmd := flag.NewFlagSet("tcp", flag.ExitOnError)
 	tcp_op := tcp_cmd.String("op", "holepunch", "operation to perform")
@@ -122,6 +128,8 @@ func ParseConfig(args []string) Config {
 			perror("Unknown operation:", conf.Op)
 			os.Exit(1)
 		}
+		conf.Enc = *g_enc
+		conf.Key = *g_key
 		return conf
 
 	case "udp":
@@ -135,6 +143,8 @@ func ParseConfig(args []string) Config {
 			perror("Unknown operation:", conf.Op)
 			os.Exit(1)
 		}
+		conf.Enc = *g_enc
+		conf.Key = *g_key
 
 		// parse "-proto"
 		ps := strings.Split(*udp_proto, ",") // parms: kcp,conf=<path>
