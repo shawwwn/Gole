@@ -54,6 +54,8 @@ gole [GLOBAL_OPTIONS] MODE local_addr remote_addr MODE_OPTIONS...
             Encryption method
       -key=
             Encryption key (leave empty to disable encryption)
+    
+    MODE=tcp|udp
 
     MODE 'tcp' OPTIONS:
       -fwd=IP:PORT|socks5[,bind=eth1,fwmark=0,dscp=0]
@@ -81,7 +83,8 @@ gole [GLOBAL_OPTIONS] MODE local_addr remote_addr MODE_OPTIONS...
             NOTE: When using KCP protocol, forward address on both sides must be TCP address
       -ttl=0
             TTL value used in holepunching (0 to disable setting ttl)
-            Should only be used when both sides are under symmetric NATs. For the full rationale, please refer to wiki.
+            Should only be used when both sides are under symmetric NATs.
+            For the full rationale of its usage, please refer to wiki.
             NOTE: Only one side needs to set it!
 ```
 
