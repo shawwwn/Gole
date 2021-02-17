@@ -77,7 +77,6 @@ func StartServerTCP(conn net.Conn, conf *TCPConfig) {
 			PrintDbgf("stream open(%d): tunnel --> %v\n", stream.ID(), fwd_conn.RemoteAddr())
 
 			go stream2conn(stream, fwd_conn)
-
 		} else {
 			// socks5
 			go func() {
@@ -169,15 +168,26 @@ func StartServerKCP(conn net.PacketConn, conf *UDPConfig) {
 			break
 		}
 
-		fwd_conn, err := net.DialTCP("tcp", nil, conf.FwdAddr.(*net.TCPAddr))
-		if err != nil {
-			perror("net.Dial() failed.", err)
-			stream.Close()
-			continue
-		}
-		PrintDbgf("stream open(%d): tunnel --> %v\n", stream.ID(), fwd_conn.RemoteAddr())
+		if conf.FwdAddr != nil {
+			// port mapping
+			fwd_conn, err := net.DialTCP("tcp", nil, conf.FwdAddr.(*net.TCPAddr))
+			if err != nil {
+				perror("net.Dial() failed.", err)
+				stream.Close()
+				continue
+			}
+			PrintDbgf("stream open(%d): tunnel --> %v\n", stream.ID(), fwd_conn.RemoteAddr())
 
-		go stream2conn(stream, fwd_conn)
+			go stream2conn(stream, fwd_conn)
+		} else {
+			// socks5
+			go func() {
+				PrintDbgf("stream open(%d)\n", stream.ID())
+				s5.HandleConnection(stream)
+				PrintDbgf("stream close(%d)\n", stream.ID())
+			}()
+		}
+
 	} // AcceptStream()
 
 	// clean up
