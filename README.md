@@ -5,10 +5,11 @@ A p2p hole-punching tool wrriten in Go, allowing two computers behind NAT to com
 
 ## Features
 * TCP/UDP hole punching even when both sides are behind symmetric NATs (no guarantee :wink:)
-* TCP/UDP tunneling
+* TCP/UDP tunneling over punched holes
 * KCP[*](#References) tunneling for tcp-over-udp support
-* STUN-less, command line driven
+* Built-in SOCKS5 proxy at tunnel endpoint
 * Traffic encryption, anti-gfw
+* STUN-less, command line driven
 
 ## Quickstart
 Suppose:
@@ -55,21 +56,29 @@ gole [GLOBAL_OPTIONS] MODE local_addr remote_addr MODE_OPTIONS...
             Encryption key (leave empty to disable encryption)
 
     MODE 'tcp' OPTIONS:
-      -fwd=IP:PORT
+      -fwd=IP:PORT|socks5[,bind=eth1,fwmark=0,dscp=0]
             Forward to address in server mode
             Forward from address in client mode
+            SOCKS5 proxy can only be set in server mode
+                bind=interface|ip|hostname
+                    bind source ip for outbound traffic
+                fwmark=int
+                    MARK value for outbound traffic, 0 to disable
+                dscp=int
+                    DSCP value for outbound traffic, 0 to disable
       -op=holepunch|server|client
             Operation to perform (default "holepunch")
             NOTE: "server" means first holepunch and start tunnel server
 
     MODE 'udp' OPTIONS:
-      -fwd=IP:PORT
-            <same as in 'tcp'>
+      -fwd=IP:PORT|socks5[...]
+            <same as in 'tcp' mode>
+            NOTE: SOCKS5 proxy only available when using KCP protocol
       -op=holepunch|server|client
-            <same as in 'tcp'>
+            <same as in 'tcp' mode>
       -proto=udp|kcp[,conf=path-to-kcp-config-file]
-            Tunnel's transport layer protocol (default "udp")
-            NOTE: When using the KCP protocol, forward address on both sides must be TCP address.
+            UDP Tunnel's custom transport layer protocol (default "udp")
+            NOTE: When using KCP protocol, forward address on both sides must be TCP address
       -ttl=0
             TTL value used in holepunching (0 to disable setting ttl)
             Should only be used when both sides are under symmetric NATs. For the full rationale, please refer to wiki.
@@ -87,6 +96,7 @@ TODO: wiki
 
 ## References
 * Bryan Ford, the UDP hole punching part of Gole is loosely based on [his paper](https://bford.info/pub/net/p2pnat/)
-* xtaci, for [kcp-go](https://github.com/xtaci/kcp-go)
-* xtaci, for [smux](https://github.com/xtaci/smux)
-* templexxx, for [xorsimd](https://github.com/templexxx/xorsimd)
+* xtaci, [kcp-go](https://github.com/xtaci/kcp-go)
+* xtaci, [smux](https://github.com/xtaci/smux)
+* templexxx, [xorsimd](https://github.com/templexxx/xorsimd)
+* ring04h, [s5.go](https://github.com/ring04h/s5.go)
