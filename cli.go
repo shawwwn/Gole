@@ -106,10 +106,10 @@ func ParseConfig(args []string) Config {
 	}
 
 	if len(args) < 1 {
-		fmt.Println("must select a mode (tcp|udp)\n")
+		fmt.Printf("must select a mode (tcp|udp)\n")
 		os.Exit(1)
 	} else if len(args) < 3 {
-		fmt.Println("must specify both local & remote endpoints for tunnel\n")
+		fmt.Printf("must specify both local & remote endpoints for tunnel\n")
 		print_usage()
 		os.Exit(1)
 	}
@@ -182,7 +182,7 @@ func ParseConfig(args []string) Config {
 		return conf
 
 	default:
-		fmt.Println("must select a mode (tcp|udp)\n")
+		fmt.Printf("must select a mode (tcp|udp)\n")
 		os.Exit(1)
 	} // switch MODE
 
