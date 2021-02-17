@@ -16,17 +16,41 @@ import (
 type EConnXor struct {
 	conn net.Conn
 	key []byte
+	key_ri int // key read index
+	key_wi int // key write index
 }
 func (econn *EConnXor) Conn() net.Conn {
 	return econn.conn
 }
 func (econn *EConnXor) Read(b []byte) (n int, err error) {
 	n, err = econn.conn.Read(b)
-	xor.Bytes(b, b[:n], []byte(econn.key))
+
+	// stream decrypt
+	sz := n
+	for i:=0; i<sz; {
+		ct := xor.Bytes(b[i:n], b[i:n], econn.key[econn.key_ri:])
+		if ct == 0 {
+			break
+		}
+		econn.key_ri = (econn.key_ri+ct) % len(econn.key)
+		i += ct
+	}
+
 	return n, err
 }
 func (econn *EConnXor) Write(b []byte) (n int, err error) {
-	xor.Bytes(b, b, []byte(econn.key))
+
+	// stream encrypt
+	sz := len(b)
+	for i:=0; i<sz; {
+		ct := xor.Bytes(b[i:], b[i:], econn.key[econn.key_wi:])
+		if ct == 0 {
+			break
+		}
+		econn.key_wi = (econn.key_wi+ct) % len(econn.key)
+		i += ct
+	}
+
 	return econn.conn.Write(b)
 }
 func (econn *EConnXor) Close() error {
@@ -148,7 +172,7 @@ func (econn *EPacketConnXor) RemoteAddr() net.Addr {
 
 func NewEConn(conn net.Conn, enc, key string) net.Conn {
 	k := pbkdf2.Key([]byte(key), []byte("saltybiscuit"), 64, 4096, sha1.New)
-	return &EConnXor{conn, k}
+	return &EConnXor{conn, k, 0, 0}
 }
 
 func NewEPacketConn(conn net.PacketConn, enc, key string) net.PacketConn {

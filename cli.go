@@ -6,6 +6,9 @@ import (
 	"os"
 	"net"
 	"strings"
+	"strconv"
+
+	"github.com/shawwwn/gole/s5"
 )
 
 type Config interface {
@@ -15,6 +18,13 @@ type Config interface {
 	getOp() string
 }
 
+type S5Config struct {
+	bind *net.TCPAddr
+	fwmark int
+	dscp int
+	dialer *net.Dialer
+}
+
 type TCPConfig struct {
 	Op string
 	LAddr *net.TCPAddr
@@ -22,6 +32,7 @@ type TCPConfig struct {
 	FwdAddr net.Addr
 	Enc string
 	Key string
+	S5Conf *S5Config
 }
 func (c TCPConfig) getMode() string {
 	return "tcp"
@@ -46,6 +57,7 @@ type UDPConfig struct {
 	TTL int
 	Enc string
 	Key string
+	S5Conf *S5Config
 }
 func (c UDPConfig) getMode() string {
 	return "udp"
@@ -122,11 +134,22 @@ func ParseConfig(args []string) Config {
 		conf.LAddr, _ = net.ResolveTCPAddr("tcp", l_endpt)
 		conf.RAddr, _ = net.ResolveTCPAddr("tcp", r_endpt)
 		tcp_cmd.Parse(args[3:])
-		conf.FwdAddr, _ = net.ResolveTCPAddr("tcp", *tcp_fwd)
 		conf.Op = *tcp_op
 		if ! contains(conf.Op, []string{"holepunch", "server", "client"}) {
 			perror("Unknown operation:", conf.Op)
 			os.Exit(1)
+		}
+		if strings.HasPrefix(*tcp_fwd, "socks5") {
+			if conf.Op != "server" {
+				perror("SOCKS5 proxy only works in server mode")
+				os.Exit(1)
+			}
+			conf.FwdAddr = nil
+			conf.S5Conf = parseSocks5(*tcp_fwd)
+			s5.Dialer = conf.S5Conf.dialer
+			s5.Verbose = g_verbose
+		} else {
+			conf.FwdAddr, _ = net.ResolveTCPAddr("tcp", *tcp_fwd)
 		}
 		conf.Enc = *g_enc
 		conf.Key = *g_key
@@ -146,33 +169,22 @@ func ParseConfig(args []string) Config {
 		conf.Enc = *g_enc
 		conf.Key = *g_key
 
-		// parse "-proto"
-		ps := strings.Split(*udp_proto, ",") // parms: kcp,conf=<path>
-		conf.Proto = ps[0]
+		parseProto(*udp_proto, conf)
 		if conf.Proto == "udp" {
 			conf.FwdAddr, _ = net.ResolveUDPAddr("udp", *udp_fwd)
 		} else if conf.Proto == "kcp" {
-			conf.FwdAddr, _ = net.ResolveTCPAddr("tcp", *udp_fwd)
-			conf.KConf = "kcp.conf" // default path
-			if len(ps) > 1 {
-				for _, v := range ps[1:] {
-					ks := strings.SplitN(v, "=", 2)
-					key := ks[0]
-					val := ""
-					if len(ks)>1 {
-						val = ks[1]
-					}
-					if key == "conf" {
-						conf.KConf = val
-					} else {
-						perror("unknown proto parameters")
-						os.Exit(1)
-					}
+			if strings.HasPrefix(*udp_fwd, "socks5") {
+				if conf.Op != "server" {
+					perror("SOCKS5 proxy only works in server mode")
+					os.Exit(1)
 				}
+				conf.FwdAddr = nil
+				conf.S5Conf = parseSocks5(*udp_fwd)
+				s5.Dialer = conf.S5Conf.dialer
+				s5.Verbose = g_verbose
+			} else {
+				conf.FwdAddr, _ = net.ResolveTCPAddr("tcp", *udp_fwd)
 			}
-		} else {
-			perror("unknown protocol")
-			os.Exit(1)
 		}
 
 		if len(udp_cmd.Args()) != 0 {
@@ -187,4 +199,68 @@ func ParseConfig(args []string) Config {
 	} // switch MODE
 
 	return nil
+}
+
+// Params: -fwd="socks5"
+//         -fwd="socks5,bind=192.168.1.64,fwmark=10,dscp=46"
+func parseSocks5(ss string) *S5Config {
+	ps := strings.Split(ss, ",")
+	// ps[0] == "socks5"
+	s5conf := &S5Config{nil, 0, 0, nil}
+	if len(ps) > 1 {
+		for _, v := range ps[1:] {
+			ks := strings.SplitN(v, "=", 2)
+			key := ks[0]
+			val := ""
+			if len(ks)>1 {
+				val = ks[1]
+			}
+			switch key {
+			case "bind":
+				s5conf.bind = &net.TCPAddr{ IP: parseIP(val) }
+			case "fwmark":
+				s5conf.fwmark, _ = strconv.Atoi(val)
+			case "dscp":
+				s5conf.dscp, _ = strconv.Atoi(val)
+			default:
+				perror("Unknown SOCKS5 parameters: %s", v)
+				os.Exit(1)
+			}
+		}
+	}
+
+	s5conf.dialer = s5.CreateDialer(s5conf.bind, s5conf.fwmark, s5conf.dscp)
+	// fmt.Printf("s5: %v\n", s5conf)
+	return s5conf
+}
+
+// Params: -proto="kcp,conf=<path>"
+//         -proto="udp"
+func parseProto(ss string, conf *UDPConfig) {
+	ps := strings.Split(ss, ",")
+	conf.Proto = ps[0]
+	if conf.Proto == "kcp" {
+		conf.KConf = "kcp.conf" // default path
+		if len(ps) > 1 {
+			for _, v := range ps[1:] {
+				ks := strings.SplitN(v, "=", 2)
+				key := ks[0]
+				val := ""
+				if len(ks)>1 {
+					val = ks[1]
+				}
+				if key == "conf" {
+					conf.KConf = val
+				} else {
+					perror("unknown proto parameters")
+					os.Exit(1)
+				}
+			}
+		}
+	} else if conf.Proto == "udp" {
+		// ...
+	} else {
+		perror("unknown protocol")
+		os.Exit(1)
+	}
 }

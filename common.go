@@ -122,3 +122,24 @@ func SetDSCP(conn net.Conn, dscp int) error {
 	}
 	return ipv4.NewConn(conn).SetTOS(dscp << 2)
 }
+
+// convert an interface name/hostname/url/ip to an ip address
+func parseIP(address string) net.IP {
+	var addrs []net.Addr
+	itf, err := net.InterfaceByName(address)
+	if err != nil {
+		goto End
+	}
+	addrs, err = itf.Addrs()
+	if err != nil {
+		goto End
+	}
+	return addrs[0].(*net.IPNet).IP
+
+End:
+	ipaddr, err := net.ResolveIPAddr("ip", address)
+	if err != nil {
+		return net.ParseIP(address)
+	}
+	return ipaddr.IP
+}
