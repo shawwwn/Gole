@@ -19,7 +19,7 @@ func CreateDialer(bind net.Addr, fwmark int, dscp int) *net.Dialer {
 		})
 	}
 
-	dialer = &net.Dialer{
+	dialer := &net.Dialer{
 		LocalAddr: bind,
 		Timeout: time.Duration(time.Second*30),
 	}
