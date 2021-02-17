@@ -2,3 +2,5 @@
 *.exe
 /gtun
 *.sh
+*.zip
+/gole-*

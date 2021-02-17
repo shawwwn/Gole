@@ -14,4 +14,5 @@ require (
 	github.com/xtaci/smux v1.5.15
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 	golang.org/x/net v0.0.0-20210119194325-5f4716e94777
+	golang.org/x/sys v0.0.0-20201119102817-f84b799fce68
 )
