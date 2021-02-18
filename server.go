@@ -56,6 +56,12 @@ func StartServerTCP(conn net.Conn, conf *TCPConfig) {
 	}
 	fmt.Printf("tunnel created: [local]%v <--> [remote]%v\n", session.LocalAddr(), session.RemoteAddr())
 
+	if conf.FwdAddr != nil {
+		fmt.Printf("Forward tunnel traffic to %s\n", conf.FwdAddr)
+	} else {
+		fmt.Printf("Forward tunnel traffic to SOCKS5\n")
+	}
+
 	// Accept and forward
 	fmt.Println("Waiting for new stream from tunnel ...")
 	for {
@@ -159,6 +165,12 @@ func StartServerKCP(conn net.PacketConn, conf *UDPConfig) {
 	}
 	fmt.Printf("tunnel created: [local]%v <--> [remote]%v\n", sess.LocalAddr(), sess.RemoteAddr())
 
+	if conf.FwdAddr != nil {
+		fmt.Printf("Forward tunnel traffic to %s\n", conf.FwdAddr)
+	} else {
+		fmt.Printf("Forward tunnel traffic to SOCKS5\n")
+	}
+
 	// Accept and forward
 	fmt.Println("Waiting for new stream from tunnel ...")
 	for {
@@ -209,7 +221,9 @@ func StartServerUDP(conn net.PacketConn, conf *UDPConfig) {
 		}
 	}
 
-	fmt.Printf("Connect to fwd address: %s\n", conf.FwdAddr)
+	fmt.Printf("tunnel created: [local]%v <--> [remote]%v\n", conf.LocalAddr(), conf.RemoteAddr())
+	fmt.Printf("Connect to forward address %s\n", conf.FwdAddr)
+
 	fwd_conn, err := net.DialUDP("udp", nil, conf.FwdAddr.(*net.UDPAddr))
 	if err != nil {
 		perror("net.DialUDP() failed.", err)

@@ -218,7 +218,9 @@ func StartClientUDP(conn net.PacketConn, conf *UDPConfig) {
 		}
 	}
 
-	fmt.Printf("Listen on fwd address: %s\n", conf.FwdAddr)
+	fmt.Printf("tunnel created: [local]%v <--> [remote]%v\n", conf.LocalAddr(), conf.RemoteAddr())
+	fmt.Printf("Listen on forward address: %s\n", conf.FwdAddr)
+
 	fwd_conn, err := net.ListenUDP("udp", conf.FwdAddr.(*net.UDPAddr))
 	if err != nil {
 		perror("net.ListenUDP() failed.", err)
