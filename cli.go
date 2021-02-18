@@ -128,7 +128,8 @@ func ParseConfig(args []string) Config {
 	l_endpt := args[1]
 	r_endpt := args[2]
 
-	switch args[0] {
+	mode := strings.ToLower(args[0]) 
+	switch mode {
 	case "tcp":
 		conf := new(TCPConfig)
 		conf.LAddr, _ = net.ResolveTCPAddr("tcp", l_endpt)
