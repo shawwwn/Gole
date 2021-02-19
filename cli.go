@@ -132,8 +132,8 @@ func ParseConfig(args []string) Config {
 	switch mode {
 	case "tcp":
 		conf := new(TCPConfig)
-		conf.LAddr, _ = net.ResolveTCPAddr("tcp", l_endpt)
-		conf.RAddr, _ = net.ResolveTCPAddr("tcp", r_endpt)
+		conf.LAddr, _ = net.ResolveTCPAddr("tcp4", l_endpt)
+		conf.RAddr, _ = net.ResolveTCPAddr("tcp4", r_endpt)
 		tcp_cmd.Parse(args[3:])
 		conf.Op = *tcp_op
 		if ! contains(conf.Op, []string{"holepunch", "server", "client"}) {
@@ -150,7 +150,7 @@ func ParseConfig(args []string) Config {
 			s5.Dialer = conf.S5Conf.dialer
 			s5.Verbose = g_verbose
 		} else {
-			conf.FwdAddr, _ = net.ResolveTCPAddr("tcp", *tcp_fwd)
+			conf.FwdAddr, _ = net.ResolveTCPAddr("tcp4", *tcp_fwd)
 		}
 		conf.Enc = *g_enc
 		conf.Key = *g_key
@@ -158,8 +158,8 @@ func ParseConfig(args []string) Config {
 
 	case "udp":
 		conf := new(UDPConfig)
-		conf.LAddr, _ = net.ResolveUDPAddr("udp", l_endpt)
-		conf.RAddr, _ = net.ResolveUDPAddr("udp", r_endpt)
+		conf.LAddr, _ = net.ResolveUDPAddr("udp4", l_endpt)
+		conf.RAddr, _ = net.ResolveUDPAddr("udp4", r_endpt)
 		udp_cmd.Parse(args[3:])
 		conf.TTL = *udp_ttl
 		conf.Op = *udp_op
@@ -172,7 +172,7 @@ func ParseConfig(args []string) Config {
 
 		parseProto(*udp_proto, conf)
 		if conf.Proto == "udp" {
-			conf.FwdAddr, _ = net.ResolveUDPAddr("udp", *udp_fwd)
+			conf.FwdAddr, _ = net.ResolveUDPAddr("udp4", *udp_fwd)
 		} else if conf.Proto == "kcp" {
 			if strings.HasPrefix(*udp_fwd, "socks5") {
 				if conf.Op != "server" {
@@ -184,7 +184,7 @@ func ParseConfig(args []string) Config {
 				s5.Dialer = conf.S5Conf.dialer
 				s5.Verbose = g_verbose
 			} else {
-				conf.FwdAddr, _ = net.ResolveTCPAddr("tcp", *udp_fwd)
+				conf.FwdAddr, _ = net.ResolveTCPAddr("tcp4", *udp_fwd)
 			}
 		}
 

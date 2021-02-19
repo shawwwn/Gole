@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-const VERSION string = "1.2"
+const VERSION string = "1.2.1"
 
 func main() {
 	fmt.Printf("Gole v%s\n", VERSION)
