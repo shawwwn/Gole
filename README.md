@@ -13,27 +13,27 @@ A p2p hole-punching tool wrriten in Go, allowing two computers behind NAT to com
 
 ## Quickstart
 Suppose:
-* A has a web server listening at `127.0.0.1:8888`
-* A is behind NAT and has a public ip of `4.4.4.4`
-* B also behind NAT and have a public ip of `3.3.3.3`
-* B want to access Peer's web server from my local machine at `127.0.0.1:1111`
-* They agreed on a pair of tcp ports `:4444`(A) and `:3333`(B)
+* A has a web server listening at `127.0.0.1:8080`
+* A is behind NAT and has a public ip of `3.3.3.3`
+* B also behind NAT and have a public ip of `4.4.4.4`
+* B want to access A's web server from his local machine at `127.0.0.1:1111`
+* They agreed on a pair of tcp ports to open `:3333`(A) and `:4444`(B)
 
-B run: 
+A run: 
 ```sh
-gole -v tcp 0.0.0.0:4444 3.3.3.3:3333 -op server -fwd=127.0.0.1:8888
+gole -v tcp 0.0.0.0:3333 4.4.4.4:4444 -op server -fwd=127.0.0.1:8080
 ```
 
-A run:
+B run:
 ```sh
-gole -v tcp 0.0.0.0:3333 4.4.4.4:4444 -op client -fwd=127.0.0.1:1111
+gole -v tcp 0.0.0.0:4444 3.3.3.3:3333 -op client -fwd=127.0.0.1:1111
 ```
 
-After successfully punching through both NATs, a TCP tunnel between the two ports will be created.
+After successfully punching through both NATs, a TCP tunnel between above two open ports will be created.
 
-A can then access B's web server from his localhost at `127.0.0.1:1111`:
+B can then access A's web server from his localhost at `127.0.0.1:1111`:
 ```
-127.0.0.1:1111 --> (1.2.3.4:4444 <--> 1.2.3.4:3333) --> 127.0.0.1:8888
+127.0.0.1:1111 --> (4.4.4.4:4444 <--> 3.3.3.3:3333) --> 127.0.0.1:8080
 ```
 
 ## Usage
@@ -75,11 +75,11 @@ gole [GLOBAL_OPTIONS] MODE local_addr remote_addr MODE_OPTIONS...
     MODE 'udp' OPTIONS:
       -fwd=IP:PORT|socks5[...]
             <same as in 'tcp' mode>
-            NOTE: SOCKS5 proxy only available when using KCP protocol
+            NOTE: SOCKS5 proxy is only available in kcp protocol's server mode
       -op=holepunch|server|client
             <same as in 'tcp' mode>
       -proto=udp|kcp[,conf=path-to-kcp-config-file]
-            UDP Tunnel's custom transport layer protocol (default "udp")
+            Custom transport layer protocol on top of UDP tunnel (default "udp")
             NOTE: When using KCP protocol, forward address on both sides must be TCP address
       -ttl=0
             TTL value used in holepunching (0 to disable setting ttl)
