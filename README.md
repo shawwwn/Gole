@@ -8,7 +8,7 @@ A p2p hole-punching tool wrriten in Go, allowing two computers behind NAT to com
 * TCP/UDP tunneling over punched holes
 * KCP[*](#References) tunneling for tcp-over-udp support
 * Built-in SOCKS5 proxy at tunnel endpoint
-* Traffic encryption, anti-gfw
+* Traffic encryption, bypass censorship
 * STUN-less, command line driven
 
 ## Quickstart
